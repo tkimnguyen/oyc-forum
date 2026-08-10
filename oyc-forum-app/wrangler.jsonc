@@ -8,6 +8,13 @@
 		"directory": "./dist",
 		"binding": "ASSETS"
 	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "oyc-forum-db",
+			"database_id": "03cb5e68-ff9e-4e19-a5e7-502fd1aab51a"
+		}
+	],
 	"observability": {
 		"enabled": true
 	}
