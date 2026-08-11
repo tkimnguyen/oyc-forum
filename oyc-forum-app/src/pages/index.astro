@@ -1,67 +1,30 @@
 ---
-const db = Astro.locals.runtime?.env?.DB;
-
-let categories = [];
-
-if (db) {
-  const result = await db
-    .prepare(`
-      SELECT
-        id,
-        name,
-        description,
-        minimum_role
-      FROM categories
-      ORDER BY name
-    `)
-    .all();
-
-  categories = result.results || [];
-}
+const categories = [
+  "Announcements",
+  "General Discussion",
+  "Racing",
+  "Cruising",
+  "Crew Wanted",
+  "Buy/Sell Trade",
+  "Photos",
+  "Board Only"
+];
 ---
 
 <html>
 <head>
   <title>OYC Forum</title>
-
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-
-    .cat {
-      border: 1px solid #ddd;
-      padding: 1rem;
-      border-radius: 8px;
-      margin-bottom: 1rem;
-    }
-
-    .cat:hover {
-      background: #f7f7f7;
-    }
-
-    a {
-      color: #003366;
-      text-decoration: none;
-    }
-  </style>
 </head>
 
 <body>
+  <h1>Oshkosh Yacht Club Forum</h1>
 
-<h1>Oshkosh Yacht Club Forum</h1>
-
-{
-  categories.map((c) => (
-    <div class="cat">
-      <h2>{c.name}</h2>
-      <p>{c.description}</p>
-    </div>
-  ))
-}
-
+  {
+    categories.map(category => (
+      <div>
+        <h2>{category}</h2>
+      </div>
+    ))
+  }
 </body>
 </html>
