@@ -1,20 +1,19 @@
 ---
----
 const db = Astro.locals.runtime?.env?.DB;
 
 let categories = [];
 
 if (db) {
   const result = await db
-    .prepare(
-      `SELECT
-          id,
-          name,
-          description,
-          minimum_role
-       FROM categories
-       ORDER BY name`
-    )
+    .prepare(`
+      SELECT
+        id,
+        name,
+        description,
+        minimum_role
+      FROM categories
+      ORDER BY name
+    `)
     .all();
 
   categories = result.results || [];
@@ -45,27 +44,24 @@ if (db) {
     }
 
     a {
-      text-decoration: none;
       color: #003366;
+      text-decoration: none;
     }
   </style>
 </head>
 
 <body>
-  <h1>Oshkosh Yacht Club Forum</h1>
 
-  {
-    categories.map((c) => (
-      <div class="cat">
-        <h2>
-          {`/category/${c.id}`}
-            {c.name}
-          </a>
-        </h2>
+<h1>Oshkosh Yacht Club Forum</h1>
 
-        <p>{c.description}</p>
-      </div>
-    ))
-  }
+{
+  categories.map((c) => (
+    <div class="cat">
+      <h2>{c.name}</h2>
+      <p>{c.description}</p>
+    </div>
+  ))
+}
+
 </body>
 </html>
