@@ -1,0 +1,23 @@
+---
+import { env } from "cloudflare:workers";
+
+let rows = [];
+
+try {
+  const result = await env.DB
+    .prepare("SELECT id, name FROM categories ORDER BY id")
+    .all();
+
+  rows = result.results || [];
+} catch (e) {
+  rows = [{ error: String(e) }];
+}
+---
+
+<html>
+<body>
+  <h1>D1 Test</h1>
+
+  <pre>{JSON.stringify(rows, null, 2)}</pre>
+</body>
+</html>
