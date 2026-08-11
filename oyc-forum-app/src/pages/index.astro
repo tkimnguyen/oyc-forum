@@ -1,62 +1,71 @@
 ---
-const categories = [
-  "Announcements",
-  "General Discussion",
-  "Racing",
-  "Cruising",
-  "Crew Wanted",
-  "Buy/Sell Trade",
-  "Photos",
-  "Board Only"
-];
+---
+const db = Astro.locals.runtime?.env?.DB;
+
+let categories = [];
+
+if (db) {
+  const result = await db
+    .prepare(
+      `SELECT
+          id,
+          name,
+          description,
+          minimum_role
+       FROM categories
+       ORDER BY name`
+    )
+    .all();
+
+  categories = result.results || [];
+}
 ---
 
 <html>
-  <head>
-    <title>OYC Forum</title>
-    <style>
-      body {
-        font-family: system-ui, sans-serif;
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 2rem;
-      }
+<head>
+  <title>OYC Forum</title>
 
-      h1 {
-        color: #003366;
-      }
-
-      .category {
-        border: 1px solid #ddd;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        border-radius: 6px;
-      }
-
-      .category:hover {
-        background: #f8f8f8;
-      }
-
-      a {
-        text-decoration: none;
-        color: #003366;
-      }
-    </style>
-  </head>
-
-  <body>
-    <h1>Oshkosh Yacht Club Forum</h1>
-
-    <p>
-      Private discussion forum for club members.
-    </p>
-
-    {
-      categories.map(category => (
-        <div class="category">
-          <h2>{category}</h2>
-        </div>
-      ))
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
     }
-  </body>
+
+    .cat {
+      border: 1px solid #ddd;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+
+    .cat:hover {
+      background: #f7f7f7;
+    }
+
+    a {
+      text-decoration: none;
+      color: #003366;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Oshkosh Yacht Club Forum</h1>
+
+  {
+    categories.map((c) => (
+      <div class="cat">
+        <h2>
+          {`/category/${c.id}`}
+            {c.name}
+          </a>
+        </h2>
+
+        <p>{c.description}</p>
+      </div>
+    ))
+  }
+</body>
 </html>
