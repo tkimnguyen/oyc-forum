@@ -1,14 +1,18 @@
 ---
-const categories = [
-  "Announcements",
-  "General Discussion",
-  "Racing",
-  "Cruising",
-  "Crew Wanted",
-  "Buy/Sell Trade",
-  "Photos",
-  "Board Only"
-];
+import { env } from "cloudflare:workers";
+
+const result = await env.DB
+  .prepare(`
+    SELECT
+      id,
+      name,
+      description
+    FROM categories
+    ORDER BY id
+  `)
+  .all();
+
+const categories = result.results || [];
 ---
 
 <html>
@@ -19,12 +23,11 @@ const categories = [
 <body>
   <h1>Oshkosh Yacht Club Forum</h1>
 
-  {
-    categories.map(category => (
-      <div>
-        <h2>{category}</h2>
-      </div>
-    ))
-  }
+  {categories.map((category) => (
+    <div>
+      <h2>{category.name}</h2>
+      <p>{category.description}</p>
+    </div>
+  ))}
 </body>
 </html>

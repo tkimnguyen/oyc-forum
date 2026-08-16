@@ -1,50 +1,33 @@
 ---
+import { env } from "cloudflare:workers";
+
 const id = Astro.params.id;
 
-const db = Astro.locals.runtime?.env?.DB;
+const result = await env.DB
+  .prepare(`
+      SELECT *
+      FROM topics
+      WHERE category_id = ?
+      ORDER BY created_at DESC
+  `)
+  .bind(id)
+  .all();
 
-let topic = null;
-let posts = [];
-
-if (db) {
-  topic = await db
-    .prepare(
-      `SELECT *
-       FROM topics
-       WHERE id = ?`
-    )
-    .bind(id)
-    .first();
-
-  const result = await db
-    .prepare(
-      `SELECT *
-       FROM posts
-       WHERE topic_id = ?
-       ORDER BY created_at`
-    )
-    .bind(id)
-    .all();
-
-  posts = result.results || [];
-}
+const topics = result.results || [];
 ---
 
 <html>
-<head>
-  <title>{topic?.title}</title>
-</head>
-
 <body>
 
-<h1>{topic?.title}</h1>
+<h1>Category</h1>
 
 {
-  posts.map(post => (
-      <article>
-        <hr />
-        <p>{post.content}</p>
-      </article>
+  topics.map(topic => (
+    <div>
+      <a href={`/topic/${topic.id}`}>
+        {topic.title}
+      </a>
+    </div>
   ))
 }
 
