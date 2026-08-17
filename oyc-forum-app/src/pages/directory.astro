@@ -1,0 +1,93 @@
+---
+import { env } from "cloudflare:workers";
+import Layout from "../layouts/Layout.astro";
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+if (!user.approved) {
+  return Astro.redirect("/pending-approval");
+}
+
+const groupsResult = await env.DB
+  .prepare(`SELECT id, name FROM groups ORDER BY name`)
+  .all();
+const groups = groupsResult.results || [];
+
+const groupFilter = Astro.url.searchParams.get("group");
+
+const usersResult = await env.DB
+  .prepare(`SELECT id, name, email, phone FROM users WHERE approved = 1 ORDER BY name, email`)
+  .all();
+const allMembers = usersResult.results || [];
+
+const membershipsResult = await env.DB
+  .prepare(`
+    SELECT user_groups.user_id, groups.id AS group_id, groups.name AS group_name, user_groups.rc_role
+    FROM user_groups
+    JOIN groups ON groups.id = user_groups.group_id
+  `)
+  .all();
+
+const RC_ROLE_LABELS: Record<string, string> = { judge: "Judge", boat2: "Boat 2" };
+
+const groupsByUser: Record<number, { id: number; name: string; rcRole: string | null }[]> = {};
+for (const row of membershipsResult.results || []) {
+  const userId = row.user_id as number;
+  if (!groupsByUser[userId]) groupsByUser[userId] = [];
+  groupsByUser[userId].push({
+    id: row.group_id as number,
+    name: row.group_name as string,
+    rcRole: (row.rc_role as string | null) || null,
+  });
+}
+
+const members = groupFilter
+  ? allMembers.filter((member) =>
+      (groupsByUser[member.id as number] || []).some((group) => String(group.id) === groupFilter)
+    )
+  : allMembers;
+---
+
+<Layout title="Member Directory">
+  <p class="back-link"><a href="/">&larr; Back to forum</a></p>
+  <h1>Member Directory</h1>
+
+  <form method="GET" action="/directory" style="margin-bottom:1rem;">
+    <select name="group">
+      <option value="">All groups</option>
+      {groups.map((group) => (
+        <option value={group.id} selected={groupFilter === String(group.id)}>
+          {group.name}
+        </option>
+      ))}
+    </select>
+    {" "}
+    <button type="submit">Filter</button>
+    {groupFilter && (
+      <>
+        {" "}
+        <a href="/directory">Clear filter</a>
+      </>
+    )}
+  </form>
+
+  {members.length === 0 && <p>No members found.</p>}
+
+  {members.map((member) => (
+    <div class="card">
+      <strong>{member.name || member.email}</strong>
+      <p class="meta">{member.email}</p>
+      {member.phone && <p class="meta">{member.phone}</p>}
+      {(groupsByUser[member.id as number] || []).map((group) => (
+        <span class="tag">
+          {group.name}
+          {group.rcRole && ` (${RC_ROLE_LABELS[group.rcRole] || "RC"})`}
+        </span>
+      ))}
+    </div>
+  ))}
+</Layout>

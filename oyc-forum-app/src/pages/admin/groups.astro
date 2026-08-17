@@ -20,12 +20,14 @@ const allUsers = usersResult.results || [];
 
 const membershipsResult = await env.DB
   .prepare(`
-    SELECT user_groups.group_id, users.id AS user_id, users.email, users.name
+    SELECT user_groups.group_id, user_groups.rc_role, users.id AS user_id, users.email, users.name
     FROM user_groups
     JOIN users ON users.id = user_groups.user_id
     ORDER BY users.email
   `)
   .all();
+
+const RC_ROLE_LABELS: Record<string, string> = { judge: "RC: Judge", boat2: "RC: Boat 2" };
 
 const membershipsByGroup: Record<number, any[]> = {};
 for (const row of membershipsResult.results || []) {
@@ -63,8 +65,28 @@ for (const row of membershipsResult.results || []) {
         <p class="meta">Members:</p>
         {members.length === 0 && <p>No members yet.</p>}
         {members.map((member) => (
-          <div style="display:flex; align-items:center; gap:0.5rem; margin:0.35rem 0;">
+          <div style="display:flex; align-items:center; gap:0.5rem; margin:0.35rem 0; flex-wrap:wrap;">
             <span>{member.name || member.email}</span>
+            {member.rc_role && (
+              <span class="tag" style="background:#ea243f;">
+                {RC_ROLE_LABELS[member.rc_role as string] || "RC"}
+              </span>
+            )}
+            <form
+              method="POST"
+              action="/api/admin/update-group-member-rc"
+              style="display:inline; padding:0; border:none; background:none; margin:0;"
+            >
+              <input type="hidden" name="group_id" value={group.id} />
+              <input type="hidden" name="user_id" value={member.user_id} />
+              <select name="rc_role">
+                <option value="" selected={!member.rc_role}>Not RC</option>
+                <option value="judge" selected={member.rc_role === "judge"}>RC: Judge</option>
+                <option value="boat2" selected={member.rc_role === "boat2"}>RC: Boat 2</option>
+              </select>
+              {" "}
+              <button type="submit">Save</button>
+            </form>
             <form
               method="POST"
               action="/api/admin/remove-group-member"
@@ -85,6 +107,12 @@ for (const row of membershipsResult.results || []) {
               {nonMembers.map((person) => (
                 <option value={person.id}>{person.name || person.email}</option>
               ))}
+            </select>
+            {" "}
+            <select name="rc_role">
+              <option value="">Not RC</option>
+              <option value="judge">RC: Judge</option>
+              <option value="boat2">RC: Boat 2</option>
             </select>
             {" "}
             <button type="submit">Add Member</button>

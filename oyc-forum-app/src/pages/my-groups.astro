@@ -1,0 +1,50 @@
+---
+import { env } from "cloudflare:workers";
+import Layout from "../layouts/Layout.astro";
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+if (!user.approved) {
+  return Astro.redirect("/pending-approval");
+}
+
+const result = await env.DB
+  .prepare(`
+    SELECT
+      groups.id,
+      groups.name,
+      groups.description,
+      (SELECT COUNT(*) FROM group_messages WHERE group_messages.group_id = groups.id) AS message_count
+    FROM user_groups
+    JOIN groups ON groups.id = user_groups.group_id
+    WHERE user_groups.user_id = ?
+    ORDER BY groups.name
+  `)
+  .bind(user.id)
+  .all();
+
+const myGroups = result.results || [];
+---
+
+<Layout title="My Groups">
+  <p class="back-link"><a href="/">&larr; Back to forum</a></p>
+  <h1>My Groups</h1>
+
+  {myGroups.length === 0 && (
+    <p>You're not in any groups yet. Ask an admin to add you to a fleet group.</p>
+  )}
+
+  {myGroups.map((group) => (
+    <div class="card">
+      <h2><a href={`/groups/${group.id}`}>{group.name}</a></h2>
+      {group.description && <p>{group.description}</p>}
+      <p class="meta">
+        {group.message_count} {group.message_count === 1 ? "message" : "messages"}
+      </p>
+    </div>
+  ))}
+</Layout>

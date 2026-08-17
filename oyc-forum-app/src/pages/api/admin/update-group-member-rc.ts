@@ -21,8 +21,8 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
   }
 
   await env.DB
-    .prepare(`INSERT OR IGNORE INTO user_groups (user_id, group_id, rc_role) VALUES (?, ?, ?)`)
-    .bind(userId, groupId, rcRole)
+    .prepare(`UPDATE user_groups SET rc_role = ? WHERE user_id = ? AND group_id = ?`)
+    .bind(rcRole, userId, groupId)
     .run();
 
   return redirect("/admin/groups");

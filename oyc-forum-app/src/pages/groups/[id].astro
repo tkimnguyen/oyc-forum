@@ -1,0 +1,97 @@
+---
+import { env } from "cloudflare:workers";
+import Layout from "../../layouts/Layout.astro";
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+if (!user.approved) {
+  return Astro.redirect("/pending-approval");
+}
+
+const { id } = Astro.params;
+
+const group = await env.DB
+  .prepare(`SELECT id, name, description FROM groups WHERE id = ?`)
+  .bind(id)
+  .first();
+
+const membership = await env.DB
+  .prepare(`SELECT 1 FROM user_groups WHERE user_id = ? AND group_id = ?`)
+  .bind(user.id, id)
+  .first();
+
+const allowed = Boolean(membership) || user.role === "admin";
+
+let messages: any[] = [];
+
+if (group && allowed) {
+  const messagesResult = await env.DB
+    .prepare(`
+      SELECT
+        group_messages.id,
+        group_messages.content,
+        group_messages.created_at,
+        users.name AS author_name,
+        users.email AS author_email
+      FROM group_messages
+      JOIN users ON users.id = group_messages.author_id
+      WHERE group_messages.group_id = ?
+      ORDER BY group_messages.created_at DESC
+    `)
+    .bind(id)
+    .all();
+
+  messages = messagesResult.results || [];
+}
+---
+
+<Layout title={group ? `${group.name} Messages` : "Group Not Found"}>
+  <p class="back-link"><a href="/my-groups">&larr; My Groups</a></p>
+
+  {!group && <p class="notice">That group doesn't exist.</p>}
+
+  {group && !allowed && (
+    <p class="notice">You're not a member of {group.name}, so you can't view its messages.</p>
+  )}
+
+  {group && allowed && (
+    <>
+      <h1>{group.name}</h1>
+      {group.description && <p>{group.description}</p>}
+
+      <form method="POST" action="/api/groups/message">
+        <input type="hidden" name="group_id" value={group.id} />
+        <p>
+          <textarea
+            name="content"
+            rows="3"
+            placeholder={`Message the ${group.name} group...`}
+            required
+          ></textarea>
+        </p>
+        <p>
+          <label>
+            <input type="checkbox" name="include_rc" value="1" />
+            {" "}Include RC members (judges / boat 2) in this notification
+          </label>
+        </p>
+        <button type="submit">Send to Group</button>
+      </form>
+
+      {messages.length === 0 && <p>No messages yet.</p>}
+
+      {messages.map((message) => (
+        <div class="post">
+          <p>{message.content}</p>
+          <p class="byline">
+            {message.author_name || message.author_email} &middot; {message.created_at}
+          </p>
+        </div>
+      ))}
+    </>
+  )}
+</Layout>

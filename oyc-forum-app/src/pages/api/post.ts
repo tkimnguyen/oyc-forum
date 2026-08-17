@@ -1,6 +1,8 @@
 import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
 import { canAccessCategory } from "../../lib/roles";
+import { sendEmail } from "../../lib/email";
+import { sendSms } from "../../lib/sms";
 
 export const POST: APIRoute = async ({ request, redirect, locals }) => {
   const user = locals.user;
@@ -21,7 +23,7 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
 
   const topic = await env.DB
     .prepare(`
-      SELECT topics.id, categories.minimum_role
+      SELECT topics.id, topics.title, topics.author_id, categories.minimum_role
       FROM topics
       JOIN categories ON categories.id = topics.category_id
       WHERE topics.id = ?
@@ -58,6 +60,43 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
       )
       .bind(postId, key, attachment.name, attachment.type, attachment.size, user.id)
       .run();
+  }
+
+  const participantsResult = await env.DB
+    .prepare(`
+      SELECT DISTINCT users.id, users.email, users.phone, users.notify_replies_email, users.notify_replies_sms
+      FROM posts
+      JOIN users ON users.id = posts.author_id
+      WHERE posts.topic_id = ?
+
+      UNION
+
+      SELECT users.id, users.email, users.phone, users.notify_replies_email, users.notify_replies_sms
+      FROM topics
+      JOIN users ON users.id = topics.author_id
+      WHERE topics.id = ?
+    `)
+    .bind(topicId, topicId)
+    .all();
+
+  const participants = participantsResult.results || [];
+  const replierName = user.name || user.email;
+  const origin = new URL(request.url).origin;
+  const topicLink = `${origin}/topic/${topicId}`;
+  const subject = `New reply in "${topic.title as string}"`;
+  const emailBody = `${replierName} replied to "${topic.title}":\n\n${content}\n\n${topicLink}`;
+  const smsBody = `[${topic.title as string}] ${replierName}: ${content}`.slice(0, 300);
+
+  for (const participant of participants) {
+    if (participant.id === user.id) continue;
+
+    if (participant.notify_replies_email) {
+      await sendEmail(participant.email as string, subject, emailBody);
+    }
+
+    if (participant.notify_replies_sms && participant.phone) {
+      await sendSms(participant.phone as string, smsBody);
+    }
   }
 
   return redirect(`/topic/${topicId}`);

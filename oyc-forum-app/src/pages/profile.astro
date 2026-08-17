@@ -1,0 +1,73 @@
+---
+import { env } from "cloudflare:workers";
+import Layout from "../layouts/Layout.astro";
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const record = await env.DB
+  .prepare(`
+    SELECT name, phone, notify_group_email, notify_group_sms, notify_replies_email, notify_replies_sms
+    FROM users WHERE id = ?
+  `)
+  .bind(user.id)
+  .first();
+
+const saved = Astro.url.searchParams.get("saved");
+---
+
+<Layout title="Edit My Info">
+  <p class="back-link"><a href="/">&larr; Back to forum</a></p>
+  <h1>Edit My Info</h1>
+
+  {saved && <p class="notice">Your info has been updated.</p>}
+
+  <form method="POST" action="/api/update-profile">
+    <p>
+      <label>
+        Email
+        <input type="email" value={user.email} disabled />
+      </label>
+    </p>
+    <p>
+      <label>
+        Name
+        <input type="text" name="name" value={record?.name || ""} />
+      </label>
+    </p>
+    <p>
+      <label>
+        Mobile number
+        <input type="tel" name="phone" value={record?.phone || ""} />
+      </label>
+    </p>
+    <p>
+      <label>
+        <input type="checkbox" name="notify_group_email" value="1" checked={Boolean(record?.notify_group_email)} />
+        {" "}Email me group messages
+      </label>
+    </p>
+    <p>
+      <label>
+        <input type="checkbox" name="notify_group_sms" value="1" checked={Boolean(record?.notify_group_sms)} />
+        {" "}Text me group messages (SMS)
+      </label>
+    </p>
+    <p>
+      <label>
+        <input type="checkbox" name="notify_replies_email" value="1" checked={Boolean(record?.notify_replies_email)} />
+        {" "}Email me when someone replies to a topic I'm in
+      </label>
+    </p>
+    <p>
+      <label>
+        <input type="checkbox" name="notify_replies_sms" value="1" checked={Boolean(record?.notify_replies_sms)} />
+        {" "}Text me when someone replies to a topic I'm in (SMS)
+      </label>
+    </p>
+    <button type="submit">Save</button>
+  </form>
+</Layout>

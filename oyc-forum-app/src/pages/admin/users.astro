@@ -16,26 +16,65 @@ const users = result.results || [];
 
 const membershipsResult = await env.DB
   .prepare(`
-    SELECT user_groups.user_id, groups.name AS group_name
+    SELECT user_groups.user_id, groups.name AS group_name, user_groups.rc_role
     FROM user_groups
     JOIN groups ON groups.id = user_groups.group_id
     ORDER BY groups.name
   `)
   .all();
 
+const RC_ROLE_LABELS: Record<string, string> = { judge: "Judge", boat2: "Boat 2" };
+
 const groupsByUser: Record<number, string[]> = {};
 for (const row of membershipsResult.results || []) {
   const userId = row.user_id as number;
   if (!groupsByUser[userId]) groupsByUser[userId] = [];
-  groupsByUser[userId].push(row.group_name as string);
+  const rcRole = row.rc_role as string | null;
+  const label = rcRole ? `${row.group_name} (${RC_ROLE_LABELS[rcRole] || "RC"})` : (row.group_name as string);
+  groupsByUser[userId].push(label);
 }
 
 const ROLES = ["member", "moderator", "board", "admin"];
+
+const imported = Astro.url.searchParams.get("imported");
+const updated = Astro.url.searchParams.get("updated");
+const skipped = Astro.url.searchParams.get("skipped");
 ---
 
 <Layout title="Manage Users">
   <p class="back-link"><a href="/">&larr; Back to forum</a></p>
   <h1>Manage Users</h1>
+
+  {imported !== null && (
+    <p class="notice">
+      Import complete &mdash; {imported} added, {updated} updated
+      {Number(skipped) > 0 && <>, {skipped} skipped (missing email)</>}.
+    </p>
+  )}
+
+  <div class="card">
+    <h2>Export / Import</h2>
+    <p>
+      <a href="/api/admin/export-users">Export all users as CSV</a>
+      {" "}&middot;{" "}
+      <a href="/api/admin/import-template">Download import template</a>
+    </p>
+    <form method="POST" action="/api/admin/import-users" enctype="multipart/form-data">
+      <input type="file" name="file" accept=".csv,text/csv" required />
+      {" "}
+      <button type="submit">Import CSV</button>
+    </form>
+    <p class="meta">
+      Columns: email (required), name, phone, role (member/moderator/board/admin), approved (1 or 0),
+      groups (semicolon-separated, e.g. "E Boat;Laser:judge" &mdash; add ":judge" or ":boat2" after a
+      group name to mark someone as RC for that group), notify_group_email, notify_group_sms,
+      notify_replies_email, notify_replies_sms (each 1 or 0). Existing users are matched by email;
+      only columns present in the file are updated, so leaving a column out of your CSV leaves that
+      field untouched on existing accounts. If a groups column is present, it replaces that user's
+      group memberships entirely (leave it blank to clear all groups, or omit the column to leave
+      groups untouched). Unrecognized group names are created automatically.
+    </p>
+  </div>
 
   {users.map((person) => (
     <div class="card">

@@ -5,6 +5,10 @@ CREATE TABLE IF NOT EXISTS users (
     phone TEXT,
     role TEXT DEFAULT 'member',
     approved INTEGER DEFAULT 0,
+    notify_group_email INTEGER DEFAULT 1,
+    notify_group_sms INTEGER DEFAULT 1,
+    notify_replies_email INTEGER DEFAULT 1,
+    notify_replies_sms INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -71,6 +75,7 @@ CREATE TABLE IF NOT EXISTS groups (
 CREATE TABLE IF NOT EXISTS user_groups (
     user_id INTEGER NOT NULL,
     group_id INTEGER NOT NULL,
+    rc_role TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, group_id),
     FOREIGN KEY (user_id) REFERENCES users(id),
@@ -82,3 +87,13 @@ INSERT OR IGNORE INTO groups (name) VALUES ('Opti');
 INSERT OR IGNORE INTO groups (name) VALUES ('Laser');
 INSERT OR IGNORE INTO groups (name) VALUES ('M15');
 INSERT OR IGNORE INTO groups (name) VALUES ('X Boat');
+
+CREATE TABLE IF NOT EXISTS group_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    group_id INTEGER NOT NULL,
+    author_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (group_id) REFERENCES groups(id),
+    FOREIGN KEY (author_id) REFERENCES users(id)
+);

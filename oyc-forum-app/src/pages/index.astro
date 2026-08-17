@@ -42,11 +42,26 @@ if (user?.role === "admin") {
 
 <Layout title="OYC Forum">
   <div class="navbar">
-    <div>
+    {user && <span>Logged in as {user.email} ({user.role})</span>}
+
+    <div class="nav-actions">
       {user ? (
         <>
-          <span>Logged in as {user.email} ({user.role})</span>
-          {" "}
+          {user.approved && <a href="/directory">Directory</a>}
+          {user.approved && <a href="/my-groups">My Groups</a>}
+          <a href="/profile">Edit My Info</a>
+
+          {user.role === "admin" && (
+            <>
+              {pendingCount > 0 && (
+                <a href="/admin/members">Pending Members ({pendingCount})</a>
+              )}
+              <a href="/admin/categories">Manage Categories</a>
+              <a href="/admin/users">Manage Users</a>
+              <a href="/admin/groups">Manage Groups</a>
+            </>
+          )}
+
           <form method="POST" action="/api/logout">
             <button type="submit">Log Out</button>
           </form>
@@ -55,20 +70,6 @@ if (user?.role === "admin") {
         <a href="/login">Log In</a>
       )}
     </div>
-
-    {user?.role === "admin" && (
-      <>
-        {pendingCount > 0 && (
-          <a href="/admin/members">Pending Members ({pendingCount})</a>
-        )}
-        {pendingCount > 0 && " "}
-        <a href="/admin/categories">Manage Categories</a>
-        {" "}
-        <a href="/admin/users">Manage Users</a>
-        {" "}
-        <a href="/admin/groups">Manage Groups</a>
-      </>
-    )}
   </div>
 
   <h1>Oshkosh Yacht Club Forum</h1>
