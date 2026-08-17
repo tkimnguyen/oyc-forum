@@ -1,0 +1,112 @@
+---
+import { env } from "cloudflare:workers";
+import Layout from "../../layouts/Layout.astro";
+
+const user = Astro.locals.user;
+
+if (!user || user.role !== "admin") {
+  return Astro.redirect("/");
+}
+
+const TABLES = [
+  "users",
+  "categories",
+  "topics",
+  "posts",
+  "attachments",
+  "groups",
+  "user_groups",
+  "group_messages",
+  "login_tokens",
+  "sessions",
+];
+
+const rowCounts: Record<string, number> = {};
+for (const table of TABLES) {
+  const result = await env.DB.prepare(`SELECT COUNT(*) AS count FROM ${table}`).first();
+  rowCounts[table] = (result?.count as number) ?? 0;
+}
+
+let dbSizeBytes: number | null = null;
+try {
+  const pageCountResult = await env.DB.prepare(`PRAGMA page_count`).first();
+  const pageSizeResult = await env.DB.prepare(`PRAGMA page_size`).first();
+  const pageCount = pageCountResult ? (Object.values(pageCountResult)[0] as number) : null;
+  const pageSize = pageSizeResult ? (Object.values(pageSizeResult)[0] as number) : null;
+  if (pageCount && pageSize) {
+    dbSizeBytes = pageCount * pageSize;
+  }
+} catch {
+  dbSizeBytes = null;
+}
+
+// Sum up every object in the attachments bucket. Capped so a runaway bucket
+// can't turn a page load into an unbounded scan.
+const R2_SCAN_LIMIT = 10000;
+let r2ObjectCount = 0;
+let r2TotalBytes = 0;
+let r2Truncated = false;
+let cursor: string | undefined = undefined;
+
+do {
+  const listing = await env.ATTACHMENTS.list({ cursor, limit: 1000 });
+  for (const object of listing.objects) {
+    r2ObjectCount++;
+    r2TotalBytes += object.size;
+  }
+  cursor = listing.truncated ? listing.cursor : undefined;
+  if (r2ObjectCount >= R2_SCAN_LIMIT && cursor) {
+    r2Truncated = true;
+    break;
+  }
+} while (cursor);
+
+function formatBytes(bytes: number | null): string {
+  if (bytes === null) return "unavailable";
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unitIndex = -1;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex++;
+  }
+  return `${value.toFixed(1)} ${units[unitIndex]}`;
+}
+
+const TABLE_LABELS: Record<string, string> = {
+  users: "Users",
+  categories: "Categories",
+  topics: "Topics",
+  posts: "Posts",
+  attachments: "Attachment records",
+  groups: "Groups",
+  user_groups: "Group memberships",
+  group_messages: "Group messages",
+  login_tokens: "Login tokens (incl. expired)",
+  sessions: "Sessions (incl. expired)",
+};
+---
+
+<Layout title="Storage & Stats">
+  <p class="back-link"><a href="/">&larr; Back to forum</a></p>
+  <h1>Storage &amp; Stats</h1>
+
+  <div class="card">
+    <h2>Database</h2>
+    <p class="meta">Estimated size: {formatBytes(dbSizeBytes)}</p>
+    {TABLES.map((table) => (
+      <p class="meta">
+        {TABLE_LABELS[table] || table}: {rowCounts[table]}
+      </p>
+    ))}
+  </div>
+
+  <div class="card">
+    <h2>Attachments (R2)</h2>
+    <p class="meta">
+      {r2ObjectCount} {r2ObjectCount === 1 ? "file" : "files"} &middot; {formatBytes(r2TotalBytes)} total
+      {r2Truncated && " (scan capped at 10,000 objects — actual totals are higher)"}
+    </p>
+  </div>
+</Layout>

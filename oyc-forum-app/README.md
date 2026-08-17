@@ -85,3 +85,7 @@ All admin pages live under `/admin/*` and redirect non-admins to `/`. All admin-
 
 - D1 doesn't support `RETURNING`; inserts use `result.meta.last_row_id` to get the new row's id.
 - Category and role checks are re-verified server-side on every read/write endpoint, not just in the UI, since URLs can be hit directly.
+
+## Presentation
+
+`presentation/PRESENTATION.md` is a Marp slide deck describing the project. See `presentation/README.md` for how to export it to HTML or PDF.
