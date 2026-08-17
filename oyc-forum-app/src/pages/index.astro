@@ -72,7 +72,6 @@ if (user?.approved) {
       {user ? (
         <>
           {user.approved && <a href="/directory">Directory</a>}
-          {user.approved && <a href="/calendar">Calendar</a>}
           {user.approved && (
             <a href="/my-groups">
               My Groups{unreadGroupCount > 0 && ` (${unreadGroupCount})`}
