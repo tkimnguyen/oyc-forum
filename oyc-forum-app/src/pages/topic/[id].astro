@@ -1,0 +1,92 @@
+---
+import { env } from "cloudflare:workers";
+import { canAccessCategory } from "../../lib/roles";
+import Layout from "../../layouts/Layout.astro";
+
+const id = Astro.params.id;
+const user = Astro.locals.user;
+
+const topic = await env.DB
+  .prepare(`
+    SELECT topics.id, topics.title, topics.topic_type, topics.category_id, categories.minimum_role
+    FROM topics
+    JOIN categories ON categories.id = topics.category_id
+    WHERE topics.id = ?
+  `)
+  .bind(id)
+  .first();
+
+const allowed = topic ? canAccessCategory(user?.role, topic.minimum_role) : false;
+
+let posts = [];
+
+if (allowed) {
+  const result = await env.DB
+    .prepare(`
+      SELECT
+        posts.id,
+        posts.content,
+        posts.created_at,
+        users.name AS author_name,
+        attachments.id AS attachment_id,
+        attachments.filename AS attachment_filename,
+        attachments.content_type AS attachment_content_type
+      FROM posts
+      LEFT JOIN users ON users.id = posts.author_id
+      LEFT JOIN attachments ON attachments.post_id = posts.id
+      WHERE posts.topic_id = ?
+      ORDER BY posts.created_at ASC
+    `)
+    .bind(id)
+    .all();
+
+  posts = result.results || [];
+}
+---
+
+<Layout title={topic ? topic.title : "Topic not found"}>
+  {topic && allowed && <p class="back-link"><a href={`/category/${topic.category_id}`}>&larr; Back to category</a></p>}
+  {!topic && <p class="back-link"><a href="/">&larr; Back to categories</a></p>}
+
+  {!topic && <h1>Topic not found</h1>}
+
+  {topic && !allowed && (
+    <>
+      <h1>{topic.title}</h1>
+      <p class="notice">You need to be logged in with sufficient access to view this topic.</p>
+      <p><a href="/login">Log In</a></p>
+    </>
+  )}
+
+  {topic && allowed && (
+    <>
+      <h1>
+        {topic.topic_type && <span class="tag">{topic.topic_type}</span>}
+        {topic.title}
+      </h1>
+
+      {
+        posts.map((post) => (
+          <div class="post">
+            <p>{post.content}</p>
+            {post.attachment_id && post.attachment_content_type?.startsWith("image/") && (
+              <img src={`/api/attachments/${post.attachment_id}`} alt={post.attachment_filename} />
+            )}
+            {post.attachment_id && !post.attachment_content_type?.startsWith("image/") && (
+              <p>
+                <a href={`/api/attachments/${post.attachment_id}`}>
+                  {post.attachment_filename}
+                </a>
+              </p>
+            )}
+            <p class="byline">&mdash; {post.author_name || "Anonymous"} &middot; {post.created_at}</p>
+          </div>
+        ))
+      }
+
+      {posts.length === 0 && <p>No posts yet.</p>}
+
+      <p><a href={`/topic/${id}/reply`}>Reply</a></p>
+    </>
+  )}
+</Layout>

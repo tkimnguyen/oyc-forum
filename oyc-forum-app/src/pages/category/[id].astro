@@ -1,35 +1,83 @@
 ---
 import { env } from "cloudflare:workers";
+import { canAccessCategory } from "../../lib/roles";
+import Layout from "../../layouts/Layout.astro";
 
 const id = Astro.params.id;
+const user = Astro.locals.user;
 
-const result = await env.DB
-  .prepare(`
-      SELECT *
+const category = await env.DB
+  .prepare(`SELECT id, name, minimum_role, enabled FROM categories WHERE id = ?`)
+  .bind(id)
+  .first();
+
+const allowed = category ? canAccessCategory(user?.role, category.minimum_role) : false;
+
+let topics = [];
+
+if (allowed && category.enabled) {
+  const result = await env.DB
+    .prepare(`
+      SELECT
+        topics.id,
+        topics.title,
+        topics.topic_type,
+        topics.created_at,
+        (SELECT COUNT(*) FROM posts WHERE posts.topic_id = topics.id) AS post_count,
+        (SELECT MAX(posts.created_at) FROM posts WHERE posts.topic_id = topics.id) AS last_post_at
       FROM topics
       WHERE category_id = ?
-      ORDER BY created_at DESC
-  `)
-  .bind(id)
-  .all();
+      ORDER BY COALESCE(last_post_at, topics.created_at) DESC
+    `)
+    .bind(id)
+    .all();
 
-const topics = result.results || [];
+  topics = result.results || [];
+}
 ---
 
-<html>
-<body>
+<Layout title={category ? category.name : "Category not found"}>
+  <p class="back-link"><a href="/">&larr; Back to categories</a></p>
 
-<h1>Category</h1>
+  {!category && <h1>Category not found</h1>}
 
-{
-  topics.map(topic => (
-    <div>
-      <a href={`/topic/${topic.id}`}>
-        {topic.title}
-      </a>
-    </div>
-  ))
-}
+  {category && !allowed && (
+    <>
+      <h1>{category.name}</h1>
+      <p class="notice">You need to be logged in with sufficient access to view this category.</p>
+      <p><a href="/login">Log In</a></p>
+    </>
+  )}
 
-</body>
-</html>
+  {category && allowed && !category.enabled && (
+    <>
+      <h1>{category.name}</h1>
+      <p class="notice">This category is currently disabled.</p>
+    </>
+  )}
+
+  {category && allowed && category.enabled && (
+    <>
+      <h1>{category.name}</h1>
+
+      <p><a href={`/new-topic?category=${id}`}>+ New Topic</a></p>
+
+      {
+        topics.map((topic) => (
+          <div class="card">
+            <a href={`/topic/${topic.id}`}>
+              {topic.topic_type && <span class="tag">{topic.topic_type}</span>}
+              {topic.title}
+            </a>
+            <p class="meta">
+              {topic.post_count} {topic.post_count === 1 ? "post" : "posts"}
+              {topic.last_post_at && <> &middot; Last activity: {topic.last_post_at}</>}
+            </p>
+          </div>
+        ))
+      }
+
+      {topics.length === 0 && <p>No topics yet.</p>}
+    </>
+  )}
+</Layout>

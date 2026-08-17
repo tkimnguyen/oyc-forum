@@ -1,0 +1,105 @@
+---
+import { env } from "cloudflare:workers";
+import { canAccessCategory } from "../lib/roles";
+import Layout from "../layouts/Layout.astro";
+
+const user = Astro.locals.user;
+const preselectedCategoryId = Astro.url.searchParams.get("category");
+
+const TOPIC_TYPES = {
+  "Crew Wanted": ["Need Crew", "Crew Available"],
+  "Buy/Sell/Trade": ["Boat For Sale", "Gear For Sale", "Wanted"],
+};
+
+let categories = [];
+let selectedCategory = null;
+
+if (user && user.approved) {
+  const result = await env.DB
+    .prepare(`SELECT id, name, minimum_role, enabled FROM categories ORDER BY id`)
+    .all();
+
+  categories = (result.results || [])
+    .filter((category) => category.enabled)
+    .filter((category) => canAccessCategory(user.role, category.minimum_role));
+
+  selectedCategory =
+    categories.find((category) => String(category.id) === preselectedCategoryId) ||
+    null;
+}
+
+const typeOptions = selectedCategory ? TOPIC_TYPES[selectedCategory.name] : null;
+---
+
+<Layout title="New Topic">
+  <p class="back-link"><a href="/">&larr; Back to categories</a></p>
+  <h1>New Topic</h1>
+
+  {!user && <p>You need to <a href="/login">log in</a> to start a new topic.</p>}
+
+  {user && !user.approved && (
+    <p class="notice">Your account is still waiting on admin approval before you can post.</p>
+  )}
+
+  {user && user.approved && categories.length === 0 && (
+    <p>No categories are available to you yet.</p>
+  )}
+
+  {user && user.approved && categories.length > 0 && (
+    <form method="POST" action="/api/topic" enctype="multipart/form-data">
+      {selectedCategory ? (
+        <>
+          <input type="hidden" name="category_id" value={selectedCategory.id} />
+          <p>Posting in: <strong>{selectedCategory.name}</strong></p>
+        </>
+      ) : (
+        <p>
+          <label>
+            Category<br />
+            <select name="category_id" required>
+              {categories.map((category) => (
+                <option value={category.id}>{category.name}</option>
+              ))}
+            </select>
+          </label>
+        </p>
+      )}
+
+      {typeOptions && (
+        <p>
+          <label>
+            Type<br />
+            <select name="topic_type">
+              {typeOptions.map((type) => (
+                <option value={type}>{type}</option>
+              ))}
+            </select>
+          </label>
+        </p>
+      )}
+
+      <p>
+        <label>
+          Title<br />
+          <input type="text" name="title" required />
+        </label>
+      </p>
+
+      <p>
+        <label>
+          Message<br />
+          <textarea name="content" rows="6" required></textarea>
+        </label>
+      </p>
+
+      <p>
+        <label>
+          Attach a photo or PDF (optional)<br />
+          <input type="file" name="attachment" accept="image/*,application/pdf" />
+        </label>
+      </p>
+
+      <button type="submit">Post Topic</button>
+    </form>
+  )}
+</Layout>

@@ -1,33 +1,86 @@
 ---
 import { env } from "cloudflare:workers";
+import { canAccessCategory } from "../lib/roles";
+import Layout from "../layouts/Layout.astro";
+
+const user = Astro.locals.user;
 
 const result = await env.DB
   .prepare(`
     SELECT
-      id,
-      name,
-      description
+      categories.id,
+      categories.name,
+      categories.description,
+      categories.minimum_role,
+      categories.enabled,
+      (SELECT COUNT(*) FROM topics WHERE topics.category_id = categories.id) AS topic_count,
+      (
+        SELECT MAX(posts.created_at)
+        FROM posts
+        JOIN topics ON topics.id = posts.topic_id
+        WHERE topics.category_id = categories.id
+      ) AS last_post_at
     FROM categories
     ORDER BY id
   `)
   .all();
 
-const categories = result.results || [];
+const categories = (result.results || [])
+  .filter((category) => category.enabled)
+  .filter((category) => canAccessCategory(user?.role, category.minimum_role));
+
+let pendingCount = 0;
+
+if (user?.role === "admin") {
+  const pendingResult = await env.DB
+    .prepare(`SELECT COUNT(*) AS count FROM users WHERE approved = 0`)
+    .first();
+
+  pendingCount = pendingResult?.count ?? 0;
+}
 ---
 
-<html>
-<head>
-  <title>OYC Forum</title>
-</head>
+<Layout title="OYC Forum">
+  <div class="navbar">
+    <div>
+      {user ? (
+        <>
+          <span>Logged in as {user.email} ({user.role})</span>
+          {" "}
+          <form method="POST" action="/api/logout">
+            <button type="submit">Log Out</button>
+          </form>
+        </>
+      ) : (
+        <a href="/login">Log In</a>
+      )}
+    </div>
 
-<body>
+    {user?.role === "admin" && (
+      <>
+        {pendingCount > 0 && (
+          <a href="/admin/members">Pending Members ({pendingCount})</a>
+        )}
+        {pendingCount > 0 && " "}
+        <a href="/admin/categories">Manage Categories</a>
+        {" "}
+        <a href="/admin/users">Manage Users</a>
+        {" "}
+        <a href="/admin/groups">Manage Groups</a>
+      </>
+    )}
+  </div>
+
   <h1>Oshkosh Yacht Club Forum</h1>
 
   {categories.map((category) => (
-    <div>
-      <h2>{category.name}</h2>
+    <div class="card">
+      <h2><a href={`/category/${category.id}`}>{category.name}</a></h2>
       <p>{category.description}</p>
+      <p class="meta">
+        {category.topic_count} {category.topic_count === 1 ? "topic" : "topics"}
+        {category.last_post_at && <> &middot; Last activity: {category.last_post_at}</>}
+      </p>
     </div>
   ))}
-</body>
-</html>
+</Layout>

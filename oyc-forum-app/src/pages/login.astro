@@ -1,0 +1,27 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const sent = Astro.url.searchParams.get("sent");
+const error = Astro.url.searchParams.get("error");
+---
+
+<Layout title="Log In">
+  <p class="back-link"><a href="/">&larr; Back to forum</a></p>
+  <h1>Log In</h1>
+
+  {sent && <p class="notice">Check your email for a login link. It expires in 60 minutes.</p>}
+  {error === "invalid" && (
+    <p class="notice">That login link is invalid or has expired. Request a new one below.</p>
+  )}
+
+  <form method="POST" action="/api/login">
+    <p>
+      <label>
+        Email address<br />
+        <input type="email" name="email" required />
+      </label>
+    </p>
+
+    <button type="submit">Send Login Link</button>
+  </form>
+</Layout>

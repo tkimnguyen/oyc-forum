@@ -1,0 +1,95 @@
+---
+import { env } from "cloudflare:workers";
+import Layout from "../../layouts/Layout.astro";
+
+const user = Astro.locals.user;
+
+if (!user || user.role !== "admin") {
+  return Astro.redirect("/");
+}
+
+const result = await env.DB
+  .prepare(`SELECT id, email, name, phone, role, approved, created_at FROM users ORDER BY created_at`)
+  .all();
+
+const users = result.results || [];
+
+const membershipsResult = await env.DB
+  .prepare(`
+    SELECT user_groups.user_id, groups.name AS group_name
+    FROM user_groups
+    JOIN groups ON groups.id = user_groups.group_id
+    ORDER BY groups.name
+  `)
+  .all();
+
+const groupsByUser: Record<number, string[]> = {};
+for (const row of membershipsResult.results || []) {
+  const userId = row.user_id as number;
+  if (!groupsByUser[userId]) groupsByUser[userId] = [];
+  groupsByUser[userId].push(row.group_name as string);
+}
+
+const ROLES = ["member", "moderator", "board", "admin"];
+---
+
+<Layout title="Manage Users">
+  <p class="back-link"><a href="/">&larr; Back to forum</a></p>
+  <h1>Manage Users</h1>
+
+  {users.map((person) => (
+    <div class="card">
+      <strong>{person.name || person.email}</strong>
+      {" "}
+      <span class="meta">{person.email}</span>
+      {person.phone && <span class="meta"> &middot; {person.phone}</span>}
+      {" "}
+      {person.approved ? (
+        <span class="tag">Approved</span>
+      ) : (
+        <span class="tag" style="background:#8a8f98;">Pending</span>
+      )}
+
+      {(groupsByUser[person.id] || []).map((groupName) => (
+        <span class="tag" style="background:#00569b;">{groupName}</span>
+      ))}
+
+      <p>
+        {person.id === user.id ? (
+          <span class="meta">This is you &mdash; role: {person.role}</span>
+        ) : (
+          <form
+            method="POST"
+            action="/api/admin/update-role"
+            style="display:inline; padding:0; border:none; background:none; margin:0;"
+          >
+            <input type="hidden" name="user_id" value={person.id} />
+            <select name="role">
+              {ROLES.map((roleOption) => (
+                <option value={roleOption} selected={roleOption === person.role}>
+                  {roleOption}
+                </option>
+              ))}
+            </select>
+            {" "}
+            <button type="submit">Update Role</button>
+          </form>
+        )}
+      </p>
+
+      <p>
+        <form
+          method="POST"
+          action="/api/admin/update-contact"
+          style="display:inline; padding:0; border:none; background:none; margin:0;"
+        >
+          <input type="hidden" name="user_id" value={person.id} />
+          <input type="text" name="name" placeholder="Name" value={person.name || ""} />
+          <input type="tel" name="phone" placeholder="Mobile number" value={person.phone || ""} />
+          {" "}
+          <button type="submit">Save Contact Info</button>
+        </form>
+      </p>
+    </div>
+  ))}
+</Layout>

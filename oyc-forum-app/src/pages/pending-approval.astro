@@ -1,0 +1,21 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+---
+
+<Layout title="Pending Approval">
+  <h1>Almost there</h1>
+  <p>
+    Your account ({user.email}) is waiting on approval from a club admin.
+    Check back soon, or reach out to the board if it's been a while.
+  </p>
+
+  <form method="POST" action="/api/logout">
+    <button type="submit">Log Out</button>
+  </form>
+</Layout>

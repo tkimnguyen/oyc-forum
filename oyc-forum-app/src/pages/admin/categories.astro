@@ -1,0 +1,60 @@
+---
+import { env } from "cloudflare:workers";
+import Layout from "../../layouts/Layout.astro";
+
+const user = Astro.locals.user;
+
+if (!user || user.role !== "admin") {
+  return Astro.redirect("/");
+}
+
+const result = await env.DB
+  .prepare(`SELECT id, name, description, minimum_role, enabled FROM categories ORDER BY id`)
+  .all();
+
+const categories = result.results || [];
+---
+
+<Layout title="Manage Categories">
+  <p class="back-link"><a href="/">&larr; Back to forum</a></p>
+  <h1>Manage Categories</h1>
+
+  {categories.map((category) => (
+    <div class="card">
+      <strong>{category.name}</strong>
+      {" "}
+      <span class="meta">min role: {category.minimum_role}</span>
+      {" "}
+      {category.enabled ? (
+        <span class="tag">Enabled</span>
+      ) : (
+        <span class="tag" style="background:#8a8f98;">Disabled</span>
+      )}
+
+      {category.description && <p class="meta">{category.description}</p>}
+
+      <div>
+        <form
+          method="POST"
+          action="/api/admin/toggle-category"
+          style="display:inline; padding:0; border:none; background:none; margin:0;"
+        >
+          <input type="hidden" name="category_id" value={category.id} />
+          <input type="hidden" name="enabled" value={category.enabled ? "0" : "1"} />
+          <button type="submit">{category.enabled ? "Disable" : "Enable"}</button>
+        </form>
+      </div>
+
+      <form
+        method="POST"
+        action="/api/admin/update-category-description"
+        style="margin-top:0.75rem;"
+      >
+        <input type="hidden" name="category_id" value={category.id} />
+        <textarea name="description" rows="2" placeholder="Description">{category.description || ""}</textarea>
+        {" "}
+        <button type="submit">Save Description</button>
+      </form>
+    </div>
+  ))}
+</Layout>

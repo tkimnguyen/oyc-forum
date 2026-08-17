@@ -1,0 +1,47 @@
+---
+import { env } from "cloudflare:workers";
+import Layout from "../../../layouts/Layout.astro";
+
+const id = Astro.params.id;
+const user = Astro.locals.user;
+
+const topic = await env.DB
+  .prepare(`SELECT id, title FROM topics WHERE id = ?`)
+  .bind(id)
+  .first();
+---
+
+<Layout title={topic ? `Reply to: ${topic.title}` : "Topic not found"}>
+  <p class="back-link"><a href={`/topic/${id}`}>&larr; Back to topic</a></p>
+  <h1>Reply to: {topic ? topic.title : "Topic not found"}</h1>
+
+  {!topic && <p>This topic no longer exists.</p>}
+
+  {topic && !user && <p>You need to <a href="/login">log in</a> to reply.</p>}
+
+  {topic && user && !user.approved && (
+    <p class="notice">Your account is still waiting on admin approval before you can post.</p>
+  )}
+
+  {topic && user && user.approved && (
+    <form method="POST" action="/api/post" enctype="multipart/form-data">
+      <input type="hidden" name="topic_id" value={id} />
+
+      <p>
+        <label>
+          Message<br />
+          <textarea name="content" rows="6" required></textarea>
+        </label>
+      </p>
+
+      <p>
+        <label>
+          Attach a photo or PDF (optional)<br />
+          <input type="file" name="attachment" accept="image/*,application/pdf" />
+        </label>
+      </p>
+
+      <button type="submit">Post Reply</button>
+    </form>
+  )}
+</Layout>

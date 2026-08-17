@@ -1,0 +1,112 @@
+---
+import { env } from "cloudflare:workers";
+import Layout from "../../layouts/Layout.astro";
+
+const user = Astro.locals.user;
+
+if (!user || user.role !== "admin") {
+  return Astro.redirect("/");
+}
+
+const groupsResult = await env.DB
+  .prepare(`SELECT id, name, description FROM groups ORDER BY name`)
+  .all();
+const groups = groupsResult.results || [];
+
+const usersResult = await env.DB
+  .prepare(`SELECT id, email, name FROM users ORDER BY email`)
+  .all();
+const allUsers = usersResult.results || [];
+
+const membershipsResult = await env.DB
+  .prepare(`
+    SELECT user_groups.group_id, users.id AS user_id, users.email, users.name
+    FROM user_groups
+    JOIN users ON users.id = user_groups.user_id
+    ORDER BY users.email
+  `)
+  .all();
+
+const membershipsByGroup: Record<number, any[]> = {};
+for (const row of membershipsResult.results || []) {
+  const groupId = row.group_id as number;
+  if (!membershipsByGroup[groupId]) membershipsByGroup[groupId] = [];
+  membershipsByGroup[groupId].push(row);
+}
+---
+
+<Layout title="Manage Groups">
+  <p class="back-link"><a href="/">&larr; Back to forum</a></p>
+  <h1>Manage Groups</h1>
+
+  <div class="card">
+    <h2>Create a Group</h2>
+    <form method="POST" action="/api/admin/create-group">
+      <input type="text" name="name" placeholder="Group name" required />
+      {" "}
+      <input type="text" name="description" placeholder="Description (optional)" />
+      {" "}
+      <button type="submit">Create Group</button>
+    </form>
+  </div>
+
+  {groups.map((group) => {
+    const members = membershipsByGroup[group.id as number] || [];
+    const memberIds = new Set(members.map((member) => member.user_id));
+    const nonMembers = allUsers.filter((person) => !memberIds.has(person.id));
+
+    return (
+      <div class="card">
+        <h2>{group.name}</h2>
+        {group.description && <p>{group.description}</p>}
+
+        <p class="meta">Members:</p>
+        {members.length === 0 && <p>No members yet.</p>}
+        {members.map((member) => (
+          <div style="display:flex; align-items:center; gap:0.5rem; margin:0.35rem 0;">
+            <span>{member.name || member.email}</span>
+            <form
+              method="POST"
+              action="/api/admin/remove-group-member"
+              style="display:inline; padding:0; border:none; background:none; margin:0;"
+              onsubmit={`return confirm('Remove ${(member.name || member.email).replace(/'/g, "\\'")} from ${group.name.replace(/'/g, "\\'")}?')`}
+            >
+              <input type="hidden" name="group_id" value={group.id} />
+              <input type="hidden" name="user_id" value={member.user_id} />
+              <button type="submit">Remove</button>
+            </form>
+          </div>
+        ))}
+
+        {nonMembers.length > 0 && (
+          <form method="POST" action="/api/admin/add-group-member" style="margin-top:0.5rem;">
+            <input type="hidden" name="group_id" value={group.id} />
+            <select name="user_id">
+              {nonMembers.map((person) => (
+                <option value={person.id}>{person.name || person.email}</option>
+              ))}
+            </select>
+            {" "}
+            <button type="submit">Add Member</button>
+          </form>
+        )}
+
+        <div style="margin-top:0.75rem;">
+          {members.length === 0 ? (
+            <form
+              method="POST"
+              action="/api/admin/delete-group"
+              style="display:inline; padding:0; border:none; background:none; margin:0;"
+              onsubmit={`return confirm('Delete the group "${group.name.replace(/'/g, "\\'")}"?')`}
+            >
+              <input type="hidden" name="group_id" value={group.id} />
+              <button type="submit">Delete Group</button>
+            </form>
+          ) : (
+            <span class="meta">Remove all members to delete this group.</span>
+          )}
+        </div>
+      </div>
+    );
+  })}
+</Layout>
