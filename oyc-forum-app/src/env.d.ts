@@ -6,6 +6,10 @@ interface Env {
 	TWILIO_ACCOUNT_SID?: string;
 	TWILIO_AUTH_TOKEN?: string;
 	TWILIO_FROM_NUMBER?: string;
+	GITHUB_TOKEN?: string;
+	GITHUB_REPO?: string;
+	GITHUB_BRANCH?: string;
+	CALENDAR_ICS_URL?: string;
 }
 
 type ForumUser = {

@@ -23,6 +23,7 @@ Environment variables (in `.dev.vars` locally, and as Worker secrets in producti
 
 - `RESEND_API_KEY` — Resend API key used to send magic-link login emails
 - `RESEND_FROM_EMAIL` — the "from" address for those emails
+- `CALENDAR_ICS_URL` — optional; overrides which calendar's public `.ics` feed the `/calendar` page reads from (defaults to the club's shared events calendar). See `docs/calendar.md`.
 
 Regenerate `worker-configuration.d.ts` after changing bindings in `wrangler.jsonc`:
 
@@ -80,6 +81,15 @@ All admin pages live under `/admin/*` and redirect non-admins to `/`. All admin-
 - **`/admin/categories`** — enable/disable each category, and edit its description inline.
 - **`/admin/users`** — view every user's approval status, edit their name/mobile number, change their role (an admin can't change their own role, to avoid self-lockout), and see which groups they belong to.
 - **`/admin/groups`** — create groups, add/remove members per group. A group can't be deleted while it still has members (enforced both in the UI and server-side); removing a member or deleting a group asks for confirmation first.
+
+## Calendar
+
+`/calendar` reads events from the club's public Google Calendar via its
+`.ics` feed — no Google API key or OAuth needed, since the calendar is
+published. Recurring events (e.g. weekly racing) are expanded, including
+one-off overrides like a rain-plan change for a single occurrence. See
+`docs/calendar.md` for how it works and how to point it at a different
+calendar.
 
 ## Known constraints
 

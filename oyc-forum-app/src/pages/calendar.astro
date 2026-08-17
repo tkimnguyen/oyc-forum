@@ -1,0 +1,72 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { fetchUpcomingEvents } from "../lib/calendar";
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+if (!user.approved) {
+  return Astro.redirect("/pending-approval");
+}
+
+const { events, error } = await fetchUpcomingEvents();
+
+const TZ = "America/Chicago";
+const dateFmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: TZ,
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+const timeFmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: TZ,
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+function formatEventWhen(event: { start: Date; end: Date | null; allDay: boolean }): string {
+  if (event.allDay) {
+    const lastDay = event.end ? new Date(event.end.getTime() - 24 * 60 * 60 * 1000) : event.start;
+    if (lastDay.getTime() > event.start.getTime()) {
+      return `${dateFmt.format(event.start)} – ${dateFmt.format(lastDay)} · All day`;
+    }
+    return `${dateFmt.format(event.start)} · All day`;
+  }
+
+  const datePart = dateFmt.format(event.start);
+  const startTime = timeFmt.format(event.start);
+  const endTime = event.end ? timeFmt.format(event.end) : null;
+  return endTime ? `${datePart} · ${startTime}–${endTime}` : `${datePart} · ${startTime}`;
+}
+---
+
+<Layout title="Calendar">
+  <p class="back-link"><a href="/">&larr; Back to forum</a></p>
+  <h1>Calendar</h1>
+
+  <p>
+    <a
+      href="https://calendar.google.com/calendar/embed?src=j0n9v98vs612ojg04bfinil068%40group.calendar.google.com&ctz=America%2FChicago"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      View full calendar on Google &rarr;
+    </a>
+  </p>
+
+  {error && <p class="notice">{error}</p>}
+
+  {!error && events.length === 0 && <p>No upcoming events in the next 90 days.</p>}
+
+  {events.map((event) => (
+    <div class="card">
+      <h2>{event.title}</h2>
+      <p class="meta">{formatEventWhen(event)}</p>
+      {event.location && <p class="meta">{event.location}</p>}
+      {event.description && <p>{event.description}</p>}
+    </div>
+  ))}
+</Layout>
