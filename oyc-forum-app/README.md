@@ -93,7 +93,7 @@ one-off overrides like a rain-plan change for a single occurrence. See
 `docs/calendar.md` for how it works and how to point it at a different
 calendar.
 
-It also shows a wind forecast (avg/gust/direction, in knots) for the next
+It also shows a wind forecast (avg/gust/direction, in mph) for the next
 event whose title starts with "Class " — the club's naming convention for
 race events — pulled from the club's Tempest weather station. See
 `docs/tempest-forecast.md` for setup and how the race-matching rule works.

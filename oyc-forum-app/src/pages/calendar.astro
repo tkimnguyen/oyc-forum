@@ -98,7 +98,7 @@ function formatEventWhen(event: { start: Date; end: Date | null; allDay: boolean
 
       {windForecast && (
         <p>
-          {windForecast.windAvgKts} kts avg, gusting {windForecast.windGustKts} kts,
+          {windForecast.windAvgMph} mph avg, gusting {windForecast.windGustMph} mph,
           from {windForecast.windDirectionCardinal}
           {windForecast.approximate && (
             <span class="meta">

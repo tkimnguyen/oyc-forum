@@ -17,8 +17,8 @@ const OUT_OF_RANGE_THRESHOLD_MINUTES = 24 * 60;
 
 export type WindForecast = {
   forecastTime: Date;
-  windAvgKts: number;
-  windGustKts: number;
+  windAvgMph: number;
+  windGustMph: number;
   windDirectionCardinal: string;
   approximate: boolean;
 };
@@ -37,7 +37,7 @@ export async function fetchWindForecastFor(targetDate: Date): Promise<{
   }
 
   const stationId = env.TEMPEST_STATION_ID || DEFAULT_STATION_ID;
-  const url = `${FORECAST_URL}?station_id=${encodeURIComponent(stationId)}&token=${encodeURIComponent(token)}&units_wind=kts`;
+  const url = `${FORECAST_URL}?station_id=${encodeURIComponent(stationId)}&token=${encodeURIComponent(token)}&units_wind=mph`;
 
   let data: any;
   try {
@@ -83,8 +83,8 @@ export async function fetchWindForecastFor(targetDate: Date): Promise<{
   return {
     forecast: {
       forecastTime: new Date(closest.time * 1000),
-      windAvgKts: closest.wind_avg,
-      windGustKts: closest.wind_gust,
+      windAvgMph: closest.wind_avg,
+      windGustMph: closest.wind_gust,
       windDirectionCardinal: closest.wind_direction_cardinal || "—",
       approximate: diffMinutes > APPROXIMATE_THRESHOLD_MINUTES,
     },
