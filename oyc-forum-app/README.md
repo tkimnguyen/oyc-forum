@@ -24,6 +24,8 @@ Environment variables (in `.dev.vars` locally, and as Worker secrets in producti
 - `RESEND_API_KEY` — Resend API key used to send magic-link login emails
 - `RESEND_FROM_EMAIL` — the "from" address for those emails
 - `CALENDAR_ICS_URL` — optional; overrides which calendar's public `.ics` feed the `/calendar` page reads from (defaults to the club's shared events calendar). See `docs/calendar.md`.
+- `TEMPEST_TOKEN` — WeatherFlow personal access token, used to show a wind forecast for the next race on `/calendar`. See `docs/tempest-forecast.md`.
+- `TEMPEST_STATION_ID` — optional; overrides which Tempest station the wind forecast comes from (defaults to the club's station, `115814`).
 
 Regenerate `worker-configuration.d.ts` after changing bindings in `wrangler.jsonc`:
 
@@ -90,6 +92,11 @@ published. Recurring events (e.g. weekly racing) are expanded, including
 one-off overrides like a rain-plan change for a single occurrence. See
 `docs/calendar.md` for how it works and how to point it at a different
 calendar.
+
+It also shows a wind forecast (avg/gust/direction, in knots) for the next
+event whose title starts with "Class " — the club's naming convention for
+race events — pulled from the club's Tempest weather station. See
+`docs/tempest-forecast.md` for setup and how the race-matching rule works.
 
 ## Known constraints
 

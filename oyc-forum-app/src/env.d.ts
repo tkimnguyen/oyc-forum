@@ -10,6 +10,8 @@ interface Env {
 	GITHUB_REPO?: string;
 	GITHUB_BRANCH?: string;
 	CALENDAR_ICS_URL?: string;
+	TEMPEST_TOKEN?: string;
+	TEMPEST_STATION_ID?: string;
 }
 
 type ForumUser = {

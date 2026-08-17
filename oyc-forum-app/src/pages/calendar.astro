@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { fetchUpcomingEvents } from "../lib/calendar";
+import { fetchWindForecastFor } from "../lib/tempest";
 
 const user = Astro.locals.user;
 
@@ -13,6 +14,19 @@ if (!user.approved) {
 }
 
 const { events, error } = await fetchUpcomingEvents();
+
+// A "race" is any event whose title starts with "Class " (e.g. "Class E
+// Boat"), per the club's naming convention on this calendar.
+const nextRace = events.find((event) => event.title.trim().toLowerCase().startsWith("class "));
+
+let windForecast = null;
+let windForecastError: string | null = null;
+
+if (nextRace) {
+  const result = await fetchWindForecastFor(nextRace.start);
+  windForecast = result.forecast;
+  windForecastError = result.error;
+}
 
 const TZ = "America/Chicago";
 const dateFmt = new Intl.DateTimeFormat("en-US", {
@@ -74,6 +88,37 @@ function formatEventWhen(event: { start: Date; end: Date | null; allDay: boolean
       View full calendar on Google &rarr;
     </a>
   </p>
+
+  {nextRace && (
+    <div class="card">
+      <h2>Wind forecast for next race: {nextRace.title}</h2>
+      <p class="meta">{formatEventWhen(nextRace)}</p>
+
+      {windForecastError && <p class="meta">{windForecastError}</p>}
+
+      {windForecast && (
+        <p>
+          {windForecast.windAvgKts} kts avg, gusting {windForecast.windGustKts} kts,
+          from {windForecast.windDirectionCardinal}
+          {windForecast.approximate && (
+            <span class="meta">
+              {" "}(nearest available forecast hour, {timeFmt.format(windForecast.forecastTime)})
+            </span>
+          )}
+        </p>
+      )}
+
+      <p class="meta">
+        <a
+          href="https://tempestwx.com/station/115814/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          View station on Tempest &rarr;
+        </a>
+      </p>
+    </div>
+  )}
 
   {error && <p class="notice">{error}</p>}
 
