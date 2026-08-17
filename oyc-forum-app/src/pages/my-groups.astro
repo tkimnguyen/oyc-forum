@@ -18,7 +18,21 @@ const result = await env.DB
       groups.id,
       groups.name,
       groups.description,
-      (SELECT COUNT(*) FROM group_messages WHERE group_messages.group_id = groups.id) AS message_count
+      (SELECT COUNT(*) FROM group_messages WHERE group_messages.group_id = groups.id) AS message_count,
+      (
+        SELECT COUNT(*)
+        FROM group_messages
+        WHERE group_messages.group_id = groups.id
+          AND group_messages.author_id != user_groups.user_id
+          AND group_messages.created_at > COALESCE(
+            (
+              SELECT last_read_at FROM group_message_reads
+              WHERE group_message_reads.group_id = groups.id
+                AND group_message_reads.user_id = user_groups.user_id
+            ),
+            user_groups.created_at
+          )
+      ) AS unread_count
     FROM user_groups
     JOIN groups ON groups.id = user_groups.group_id
     WHERE user_groups.user_id = ?
@@ -40,7 +54,12 @@ const myGroups = result.results || [];
 
   {myGroups.map((group) => (
     <div class="card">
-      <h2><a href={`/groups/${group.id}`}>{group.name}</a></h2>
+      <h2>
+        <a href={`/groups/${group.id}`}>{group.name}</a>
+        {group.unread_count > 0 && (
+          <span class="tag">{group.unread_count} unread</span>
+        )}
+      </h2>
       {group.description && <p>{group.description}</p>}
       <p class="meta">
         {group.message_count} {group.message_count === 1 ? "message" : "messages"}

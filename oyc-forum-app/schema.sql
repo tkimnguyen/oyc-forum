@@ -97,3 +97,17 @@ CREATE TABLE IF NOT EXISTS group_messages (
     FOREIGN KEY (group_id) REFERENCES groups(id),
     FOREIGN KEY (author_id) REFERENCES users(id)
 );
+
+-- Tracks the last time each member viewed each group's message board, so
+-- unread counts can be computed as "messages newer than this". A missing
+-- row means the member hasn't visited yet, in which case unread is counted
+-- from when they joined the group (user_groups.created_at) rather than
+-- from the dawn of time.
+CREATE TABLE IF NOT EXISTS group_message_reads (
+    user_id INTEGER NOT NULL,
+    group_id INTEGER NOT NULL,
+    last_read_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, group_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (group_id) REFERENCES groups(id)
+);

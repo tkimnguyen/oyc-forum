@@ -46,6 +46,17 @@ if (group && allowed) {
     .all();
 
   messages = messagesResult.results || [];
+
+  // Mark everything shown above as read, so this group drops out of the
+  // unread count on the home page until someone posts again.
+  await env.DB
+    .prepare(`
+      INSERT INTO group_message_reads (user_id, group_id, last_read_at)
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_id, group_id) DO UPDATE SET last_read_at = CURRENT_TIMESTAMP
+    `)
+    .bind(user.id, id)
+    .run();
 }
 ---
 

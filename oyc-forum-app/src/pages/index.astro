@@ -38,6 +38,26 @@ if (user?.role === "admin") {
 
   pendingCount = pendingResult?.count ?? 0;
 }
+
+let unreadGroupCount = 0;
+
+if (user?.approved) {
+  const unreadResult = await env.DB
+    .prepare(`
+      SELECT COUNT(*) AS count
+      FROM group_messages
+      JOIN user_groups ON user_groups.group_id = group_messages.group_id
+        AND user_groups.user_id = ?
+      LEFT JOIN group_message_reads ON group_message_reads.group_id = group_messages.group_id
+        AND group_message_reads.user_id = user_groups.user_id
+      WHERE group_messages.author_id != ?
+        AND group_messages.created_at > COALESCE(group_message_reads.last_read_at, user_groups.created_at)
+    `)
+    .bind(user.id, user.id)
+    .first();
+
+  unreadGroupCount = unreadResult?.count ?? 0;
+}
 ---
 
 <Layout title="OYC Forum">
@@ -45,10 +65,18 @@ if (user?.role === "admin") {
     {user && <span>Logged in as {user.email} ({user.role})</span>}
 
     <div class="nav-actions">
+      <a href="https://tempestwx.com/station/115814/" target="_blank" rel="noopener noreferrer">
+        Weather Station
+      </a>
+
       {user ? (
         <>
           {user.approved && <a href="/directory">Directory</a>}
-          {user.approved && <a href="/my-groups">My Groups</a>}
+          {user.approved && (
+            <a href="/my-groups">
+              My Groups{unreadGroupCount > 0 && ` (${unreadGroupCount})`}
+            </a>
+          )}
           <a href="/profile">Edit My Info</a>
 
           {user.role === "admin" && (
