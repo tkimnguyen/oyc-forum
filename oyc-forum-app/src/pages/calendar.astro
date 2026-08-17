@@ -26,6 +26,24 @@ const timeFmt = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
   minute: "2-digit",
 });
+// Used only to compare calendar days in the club's own timezone — the
+// server's UTC "today" can be a different local day than Chicago's.
+const dayKeyFmt = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+const todayKey = dayKeyFmt.format(new Date());
+const tomorrowKey = dayKeyFmt.format(new Date(Date.now() + 24 * 60 * 60 * 1000));
+
+function dayLabel(event: { start: Date }): string | null {
+  const key = dayKeyFmt.format(event.start);
+  if (key === todayKey) return "Today";
+  if (key === tomorrowKey) return "Tomorrow";
+  return null;
+}
 
 function formatEventWhen(event: { start: Date; end: Date | null; allDay: boolean }): string {
   if (event.allDay) {
@@ -63,7 +81,10 @@ function formatEventWhen(event: { start: Date; end: Date | null; allDay: boolean
 
   {events.map((event) => (
     <div class="card">
-      <h2>{event.title}</h2>
+      <h2>
+        {dayLabel(event) && <span class="tag">{dayLabel(event)}</span>}
+        {event.title}
+      </h2>
       <p class="meta">{formatEventWhen(event)}</p>
       {event.location && <p class="meta">{event.location}</p>}
       {event.description && <p>{event.description}</p>}

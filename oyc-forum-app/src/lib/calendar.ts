@@ -23,6 +23,21 @@ export type CalendarEvent = {
   description: string | null;
 };
 
+// Google Calendar auto-appends Google Meet join info to every event's
+// description. It's noise for a club events list, so strip it out.
+function cleanDescription(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+
+  let text = raw
+    .replace(/Join with Google Meet:\s*https:\/\/meet\.google\.com\/\S+/gi, "")
+    .replace(/Learn more about Meet at:\s*https:\/\/support\.google\.com\/a\/users\/answer\/9282720\S*/gi, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return text || null;
+}
+
 export async function fetchUpcomingEvents(): Promise<{
   events: CalendarEvent[];
   error: string | null;
@@ -86,7 +101,7 @@ export async function fetchUpcomingEvents(): Promise<{
             end,
             allDay: event.startDate.isDate,
             location: event.location || null,
-            description: event.description || null,
+            description: cleanDescription(event.description),
           });
         }
         continue;
@@ -118,7 +133,7 @@ export async function fetchUpcomingEvents(): Promise<{
           end,
           allDay: occurrence.startDate.isDate,
           location: occurrence.item.location || null,
-          description: occurrence.item.description || null,
+          description: cleanDescription(occurrence.item.description),
         });
       }
     }
