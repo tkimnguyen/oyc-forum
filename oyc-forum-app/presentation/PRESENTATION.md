@@ -87,12 +87,31 @@ pulled directly from the club's own materials.
 
 ---
 
-## Posting & categories
+## Signing in and getting approved
 
-- Categories: General Discussion, Crew Finder, Marketplace, Board Only, and more
-- Topics can carry a tag like <span class="tag">Crew Wanted</span> or Buy/Sell/Trade
-- Replies support photo and file attachments, stored in Cloudflare R2
-  and served back out only to people with access to that category
+![w:440 screenshot](images/login.png) ![w:440 screenshot](images/pending-approval.png)
+
+---
+
+## Categories & topics
+
+Every category lists its topics, newest activity first, tagged
+<span class="tag">Crew Wanted</span> or Buy/Sell/Trade where relevant.
+
+![w:620 screenshot](images/category.png)
+
+---
+
+## Posting a new topic
+
+![w:560 screenshot](images/new-topic.png)
+
+---
+
+## Replying, with attachments
+
+Replies support photo and file attachments, stored in Cloudflare R2
+and served back out only to people with access to that category.
 
 ![w:700 screenshot](images/topic.png)
 
@@ -103,7 +122,13 @@ pulled directly from the club's own materials.
 Members can belong to one or more **groups** — the club's boat fleets:
 E Boat, Opti, Laser, M15, X Boat (more can be added any time).
 
-Each group has its own private message board:
+**My Groups** shows every fleet you belong to, and flags RC duty:
+
+![w:560 screenshot](images/my-groups.png)
+
+---
+
+## Each group has its own message board
 
 ![w:700 screenshot](images/group-thread.png)
 
@@ -129,6 +154,15 @@ Each group has its own private message board:
 
 ---
 
+## Everyone manages their own notifications
+
+"Edit My Info" lets each member update their own contact details and
+choose email and/or SMS for group messages and replies, independently.
+
+![w:560 screenshot](images/profile.png)
+
+---
+
 ## Member directory
 
 Every approved member, their contact info, and which fleets (and RC
@@ -142,13 +176,37 @@ duty) they're part of — filterable by group.
 
 No more hand-written SQL for routine club administration:
 
+- **Pending Members** — approve new signups with one click
 - **Manage Categories** — enable/disable, edit descriptions
-- **Manage Users** — approve members, change roles, edit contact info
+- **Manage Users** — change roles, edit contact info, CSV export/import
 - **Manage Groups** — create fleets, add/remove members, assign RC duty
-- **CSV export & import** — bulk-manage the whole roster, including
-  group memberships, RC assignments, and notification preferences
+- **Storage & Stats** — database and attachment usage at a glance
 
-![w:620 screenshot](images/groups.png)
+![w:560 screenshot](images/admin-members.png)
+
+---
+
+## Manage Categories
+
+Enable or disable any category, and edit its description inline —
+changes take effect immediately, no deploy required.
+
+![w:560 screenshot](images/admin-categories.png)
+
+---
+
+## Manage Groups
+
+Create fleets, add or remove members, and assign Race Committee duty
+(judge or boat 2) per member per group.
+
+![w:560 screenshot](images/groups.png)
+
+---
+
+## Manage Users
+
+![w:600 screenshot](images/admin-users.png)
 
 ---
 
@@ -167,6 +225,15 @@ notify_replies_email, notify_replies_sms
 - Only columns present in the file get updated — a partial CSV never
   silently wipes fields you didn't intend to touch
 - A downloadable template keeps the format easy to follow
+
+---
+
+## Storage & Stats
+
+Row counts across every table, an estimated database size, and R2
+attachment usage — one page, no dashboard to configure.
+
+![w:560 screenshot](images/storage.png)
 
 ---
 
